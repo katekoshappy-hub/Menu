@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<title>Калькулятор меню</title>
+<style>
+  /* ===== Базовые стили ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --border: #e2e5ea;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --radius: 12px;
+    --tap: 44px; /* минимальный размер тач-цели */
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.45;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ===== Каркас ===== */
+  .app {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 16px 12px calc(40px + env(safe-area-inset-bottom));
+  }
+
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  header.top h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  header.top .hint {
+    color: var(--muted);
+    font-size: 12.5px;
+    width: 100%;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: #fafbfc;
+  }
+
+  .panel-head h2 { font-size: 15px; font-weight: 600; }
+
+  /* ===== Поиск ===== */
+  .search-wrap {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-wrap input {
+    width: 100%;
+    min-height: var(--tap);
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 16px; /* iOS не зумит */
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    background: #fff;
+  }
+
+  .search-wrap input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  /* ===== Аккордеон ===== */
+  .cat { border-bottom: 1px solid var(--border); }
+  .cat:last-child { border-bottom: none; }
+
+  .cat-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--tap);
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+    background: #fff;
+    transition: background .12s;
+  }
+
+  .cat-head:active { background: #eef1f5; }
+
+  .cat-head .chev {
+    width: 18px; height: 18px; flex: 0 0 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted); transition: transform .18s; font-size: 11px;
+  }
+
+  .cat.open .cat-head .chev { transform: rotate(90deg); }
+
+  .cat-head .cat-name { font-weight: 600; font-size: 14.5px; }
+
+  .cat-head .cat-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--muted);
+    background: #eef0f3;
+    border-radius: 999px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+
+  .cat-head .cat-count.has-selected {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .cat-body { display: none; padding: 4px 8px 10px; background: #fbfcfd; }
+  .cat.open .cat-body { display: block; }
+
+  /* ===== Строка блюда ===== */
+  .dish-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 10px;
+    min-height: calc(var(--tap) + 4px);
+    transition: background .12s;
+  }
+
+  .dish-row:active { background: #eef1f5; }
+  .dish-row.checked { background: var(--accent-soft); }
+
+  /* Чекбокс крупнее на мобильном */
+  .dish-row input[type="checkbox"] {
+    width: 22px; height: 22px; flex: 0 0 22px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .dish-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    cursor: pointer;
+    font-size: 15px;
+    word-break: break-word;
+    padding: 6px 0; /* увеличивает тач-зону */
+  }
+
+  .dish-name .no-ing {
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: 6px;
+    display: block;
+  }
+
+  .portion-wrap {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .dish-row.checked .portion-wrap { display: inline-flex; }
+
+  .portion-wrap label { font-size: 12px; color: var(--muted); }
+
+  .portion-input {
+    width: 64px;
+    min-height: var(--tap);
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 16px; /* iOS не зумит */
+    text-align: center;
+    outline: none;
+    background: #fff;
+  }
+
+  .portion-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+
+  /* ===== Результат ===== */
+  .panel-right .panel-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(6px);
+  }
+
+  .result-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--tap);
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+    white-space: nowrap;
+  }
+
+  .btn:active { background: #eef1f5; transform: translateY(1px); }
+
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .result-body { padding: 6px 14px 14px; min-height: 100px; }
+
+  .result-list { list-style: none; }
+
+  .result-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px dashed #eceef2;
+    font-size: 15px;
+    min-height: var(--tap);
+  }
+  .result-item:last-child { border-bottom: none; }
+
+  .result-item .ri-name { font-weight: 500; }
+
+  .result-item .ri-dots {
+    flex: 1 1 auto;
+    border-bottom: 1px dotted #d4d8df;
+    transform: translateY(-3px);
+    min-width: 12px;
+  }
+
+  .result-item .ri-qty {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .result-item .ri-qty.taste {
+    color: var(--muted);
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .alt-select {
+    padding: 6px 8px;
+    min-height: var(--tap);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 16px; /* iOS не зумит */
+    background: #fff;
+    color: var(--text);
+    outline: none;
+    max-width: 140px;
+  }
+  .alt-select:focus { border-color: var(--accent); }
+
+  .empty {
+    color: var(--muted);
+    font-size: 14px;
+    padding: 28px 0;
+    text-align: center;
+  }
+
+  .no-ing-note {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 10px 0 4px;
+    border-top: 1px dashed #eceef2;
+    margin-top: 4px;
+  }
+
+  /* ===== Тост ===== */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 20px);
+    background: #1f2430;
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    max-width: calc(100vw - 32px);
+    text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ===== Планшет / десктоп ===== */
+  @media (min-width: 861px) {
+    .app { padding: 20px 16px 60px; }
+    header.top h1 { font-size: 22px; }
+    header.top .hint { width: auto; font-size: 13px; }
+    .panel-head { padding: 14px 16px; }
+    .search-wrap { padding: 12px 16px; }
+    .cat-head { padding: 12px 16px; }
+    .cat-body { padding: 4px 10px 10px; }
+    .dish-row { padding: 8px; }
+    .dish-row input[type="checkbox"] { width: 17px; height: 17px; flex-basis: 17px; }
+    .dish-name { font-size: 14px; padding: 0; }
+    .dish-name .no-ing { display: inline; }
+    .portion-wrap label { display: inline; }
+    .result-body { padding: 8px 16px 16px; }
+    .result-item { padding: 8px 0; font-size: 14px; }
+    .btn { min-height: 0; padding: 7px 13px; font-size: 13px; }
+    .alt-select { font-size: 12px; padding: 2px 4px; min-height: 0; }
+  }
+
+  /* ===== Мобильный: одна колонка ===== */
+  @media (max-width: 860px) {
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    /* Результат всегда под выбором */
+    .panel-right { order: 2; }
+
+    /* На мобильном кнопки результата — во всю ширину */
+    .result-tools {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .result-tools .btn { width: 100%; }
+
+    /* Поле «Сбросить» в шапке меню — компактнее, но тач-цель сохранена */
+    .panel-left .panel-head .btn { padding: 8px 12px; }
+  }
+
+  /* ===== Очень узкие экраны ===== */
+  @media (max-width: 380px) {
+    .app { padding: 12px 8px calc(32px + env(safe-area-inset-bottom)); }
+    header.top h1 { font-size: 18px; }
+    .result-item { font-size: 14px; }
+    .alt-select { max-width: 110px; }
+  }
+
+  /* ===== Печать ===== */
+  @media print {
+    body { background: #fff; }
+    .app { max-width: none; padding: 0; }
+    .panel-left { display: none !important; }
+    .layout { display: block; }
+    .panel { border: none; border-radius: 0; }
+    .panel-right .panel-head {
+      position: static;
+      background: #fff;
+      border-bottom: 2px solid #000;
+      backdrop-filter: none;
+    }
+    .result-tools { display: none !important; }
+    .result-item { border-bottom: 1px solid #ddd; }
+    .result-item .ri-dots { display: none; }
+    .result-item .ri-qty { margin-left: auto; }
+    .no-ing-note { display: block; }
+    header.top .hint { display: none; }
+    .toast { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>Калькулятор меню</h1>
+    <span class="hint">Выберите блюда и укажите порции — список продуктов пересчитается</span>
+  </header>
+
+  <div class="layout">
+    <!-- Левая панель: выбор блюд -->
+    <section class="panel panel-left">
+      <div class="panel-head">
+        <h2>Блюда</h2>
+        <button class="btn" id="btnReset" type="button">Сбросить</button>
+      </div>
+      <div class="search-wrap">
+        <input type="search" id="searchInput" placeholder="Поиск по блюдам…" autocomplete="off" inputmode="search">
+      </div>
+      <div id="menuRoot"></div>
+    </section>
+
+    <!-- Правая панель: итог -->
+    <section class="panel panel-right">
+      <div class="panel-head">
+        <h2>Список продуктов</h2>
+      </div>
+      <div class="result-body">
+        <div class="result-tools" style="margin-bottom:10px;">
+          <button class="btn" id="btnCopy" type="button" disabled>Скопировать</button>
+          <button class="btn" id="btnPrint" type="button" disabled>Печать</button>
+        </div>
+        <ul class="result-list" id="resultList"></ul>
+        <div class="empty" id="resultEmpty">Пока ничего не выбрано</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   ДАННЫЕ МЕНЮ
+   ============================================================ */
+const MENU = {
+  "Супы": { basePortions: 2, dishes: [
+    { dish: "Борщ", ingredients: [
+      { name: "Свинина", qty: 0, unit: "" },
+      { name: "Картошка", qty: 3, unit: "шт." },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Свекла", qty: 1, unit: "шт." },
+      { name: "Капуста", qty: 0.5, unit: "шт." },
+      { name: "Томатная паста", qty: 1, unit: "упаковка" } ]},
+    { dish: "Щи", ingredients: [
+      { name: "Свинина", qty: 0, unit: "" },
+      { name: "Картошка", qty: 3, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Капуста", qty: 0.5, unit: "шт." },
+      { name: "Помидор", qty: 2, unit: "шт." } ]},
+    { dish: "Солянка", ingredients: [
+      { name: "Свинина", qty: 0, unit: "" },
+      { name: "Мясное ассорти", qty: 1, unit: "упаковка" },
+      { name: "Соленые огурцы", qty: 1, unit: "упаковка" },
+      { name: "Маслины", qty: 1, unit: "упаковка" },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Томатная паста", qty: 1, unit: "упаковка" },
+      { name: "Лимон", qty: 1, unit: "шт." },
+      { name: "Картошка", qty: 3, unit: "шт." } ]},
+    { dish: "Гороховый суп с охотничьими колбасками", ingredients: [
+      { name: "Колбаски охотничьи", qty: 2, unit: "упаковки" },
+      { name: "Горох зеленый", qty: 1, unit: "упаковка" },
+      { name: "Картофель", qty: 3, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Кости для бульона", qty: 1, unit: "упаковка" } ]},
+    { dish: "Сырный суп", ingredients: [
+      { name: "Курица", qty: 0, unit: "" },
+      { name: "Картошка", qty: 3, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Шампиньоны", qty: 1, unit: "упаковка" },
+      { name: "Сливочный сыр", qty: 1, unit: "упаковка" } ]},
+    { dish: "Суп с лапшой", ingredients: [
+      { name: "Курица", qty: 0, unit: "" },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Лапша", qty: 1, unit: "упаковка" } ]}
+  ]},
+
+  "Горячее": { basePortions: 2, dishes: [
+    { dish: "Рис с тунцом", ingredients: [
+      { name: "Рис", qty: 1, unit: "упаковка" },
+      { name: "Тунец", qty: 2, unit: "упаковки" },
+      { name: "Огурец", qty: 2, unit: "шт." },
+      { name: "Красный лук", qty: 2, unit: "шт." },
+      { name: "Яйцо", qty: 8, unit: "шт." } ]},
+    { dish: "Макароны по флотски", ingredients: [
+      { name: "Макароны", qty: 1, unit: "упаковка" },
+      { name: "Фарш", qty: 0, unit: "" },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Томатная паста", qty: 1, unit: "упаковка" } ]},
+    { dish: "Пюре с котлетами", ingredients: [
+      { name: "Картошка", qty: 10, unit: "шт." },
+      { name: "Котлеты", qty: 0, unit: "" } ]},
+    { dish: "Котлеты", ingredients: [
+      { name: "Свинина", qty: 0, unit: "" },
+      { name: "Говядина", qty: 0, unit: "" },
+      { name: "Лук", qty: 2, unit: "шт." },
+      { name: "Хлеб батон", qty: 1, unit: "упаковка" },
+      { name: "Молоко", qty: 1, unit: "упаковка" } ]},
+    { dish: "Жаркое по-деревенски", ingredients: [
+      { name: "Свинина", qty: 0, unit: "" },
+      { name: "Картофель", qty: 10, unit: "шт." },
+      { name: "Перец болгарский", qty: 2, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Чеснок", qty: 1, unit: "шт." } ]},
+    { dish: "Гречка с грибами и курицей", ingredients: [
+      { name: "Гречка", qty: 1, unit: "упаковка" },
+      { name: "Курица", qty: 0, unit: "" },
+      { name: "Шампиньоны", qty: 1, unit: "упаковка" },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Томатная паста", qty: 1, unit: "упаковка" },
+      { name: "Зелень", qty: 1, unit: "упаковка" } ]},
+    { dish: "Рис с азиатской курицей", ingredients: [
+      { name: "Рис", qty: 1, unit: "упаковка" },
+      { name: "Курица", qty: 0, unit: "" },
+      { name: "Перец болгарский", qty: 2, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Кисло-сладкий соус", qty: 1, unit: "упаковка" },
+      { name: "Соевый соус", qty: 3, unit: "ст. ложки" },
+      { name: "Лук", qty: 1, unit: "шт." } ]},
+    { dish: "Мясо с картофелем в духовке", ingredients: [
+      { name: "Картофель", qty: 10, unit: "шт." },
+      { name: "Свинина", qty: 0, unit: "" },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Перец болгарский", qty: 2, unit: "шт." },
+      { name: "Чеснок", qty: 1, unit: "шт." } ]},
+    { dish: "Гуляш с гарниром", ingredients: [
+      { name: "Гарнир", qty: 1, unit: "упаковка" },
+      { name: "Курица или Свинина", qty: 0, unit: "",
+        alternatives: ["Курица", "Свинина"] },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Томатная паста или Сливки или Сметана", qty: 1, unit: "упаковка",
+        alternatives: ["Томатная паста", "Сливки", "Сметана"] },
+      { name: "Пшеничная мука", qty: 2, unit: "ст. ложки" } ]},
+    { dish: "Фунчоза с курицей и овощами", ingredients: [
+      { name: "Фунчоза", qty: 1, unit: "упаковка" },
+      { name: "Курица", qty: 0, unit: "" },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Перец болгарский", qty: 1, unit: "шт." },
+      { name: "Брокколи", qty: 1, unit: "упаковка" },
+      { name: "Соевый соус", qty: 3, unit: "ст. ложки" } ]},
+    { dish: "Фунчоза с грибами и овощами по-корейски", ingredients: [
+      { name: "Фунчоза", qty: 1, unit: "упаковка" },
+      { name: "Перец болгарский", qty: 1, unit: "шт." },
+      { name: "Морковь по-корейски", qty: 1, unit: "упаковка" },
+      { name: "Огурец", qty: 1, unit: "шт." },
+      { name: "Шампиньоны", qty: 1, unit: "упаковка" },
+      { name: "Соевый соус", qty: 3, unit: "ст. ложки" } ]},
+    { dish: "Стручковая фасоль с курицей и яйцом", ingredients: [
+      { name: "Курица", qty: 0, unit: "" },
+      { name: "Стручковая фасоль замороженная", qty: 1, unit: "упаковка" },
+      { name: "Яйцо", qty: 4, unit: "шт." },
+      { name: "Лук", qty: 1, unit: "шт." } ]}
+  ]},
+
+  "Салаты": { basePortions: 2, dishes: [
+    { dish: "Винегрет", ingredients: [
+      { name: "Свекла", qty: 1, unit: "шт." },
+      { name: "Картошка", qty: 3, unit: "шт." },
+      { name: "Морковь", qty: 2, unit: "шт." },
+      { name: "Соленые огурцы", qty: 1, unit: "упаковка" },
+      { name: "Квашеная капуста", qty: 1, unit: "упаковка" },
+      { name: "Зеленый горошек", qty: 1, unit: "упаковка" },
+      { name: "Зеленый лук", qty: 1, unit: "упаковка" } ]},
+    { dish: "Окрошка", ingredients: [
+      { name: "Вареная колбаса", qty: 1, unit: "упаковка" },
+      { name: "Картошка", qty: 3, unit: "шт." },
+      { name: "Яйца", qty: 4, unit: "шт." },
+      { name: "Огурцы", qty: 3, unit: "шт." },
+      { name: "Зеленый лук", qty: 1, unit: "упаковка" } ]},
+    { dish: "Греческий", ingredients: [
+      { name: "Помидоры", qty: 2, unit: "шт." },
+      { name: "Огурцы", qty: 2, unit: "шт." },
+      { name: "Перец болгарский", qty: 1, unit: "шт." },
+      { name: "Красный лук", qty: 1, unit: "шт." },
+      { name: "Сыр фета", qty: 1, unit: "упаковка" },
+      { name: "Листья салата", qty: 1, unit: "упаковка" } ]},
+    { dish: "Мимоза", ingredients: [
+      { name: "Картошка", qty: 3, unit: "шт." },
+      { name: "Тунец или Консервы", qty: 1, unit: "упаковка",
+        alternatives: ["Тунец", "Консервы"] },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Морковь", qty: 1, unit: "шт." },
+      { name: "Яйца", qty: 3, unit: "шт." },
+      { name: "Сыр", qty: 1, unit: "упаковка" } ]}
+  ]},
+
+  "Завтрак": { basePortions: 1, dishes: [
+    { dish: "Белковый омлет", ingredients: [
+      { name: "Яйца", qty: 2, unit: "шт." },
+      { name: "Творог", qty: 0.5, unit: "упаковка" },
+      { name: "Ветчина", qty: 0.5, unit: "упаковка" },
+      { name: "Черри", qty: 0.5, unit: "упаковка" },
+      { name: "Кукуруза", qty: 2, unit: "ст. ложки" } ]},
+    { dish: "ПП-вафли с творогом, бананом", ingredients: [
+      { name: "Творог", qty: 1, unit: "упаковка" },
+      { name: "Яйца", qty: 2, unit: "шт." },
+      { name: "Мука", qty: 2, unit: "ст. ложки" },
+      { name: "Разрыхлитель", qty: 0.5, unit: "ч. ложки" },
+      { name: "Ваниль", qty: 1, unit: "упаковка" } ]},
+    { dish: "Белковые пирожки", ingredients: [
+      { name: "Яйца", qty: 1, unit: "шт." },
+      { name: "Ветчина", qty: 0.5, unit: "упаковка" },
+      { name: "Сыр", qty: 0.25, unit: "упаковка" },
+      { name: "Творог", qty: 0.5, unit: "упаковка" },
+      { name: "Мука", qty: 2, unit: "ст. ложки" } ]},
+    { dish: "Бутерброд с яйцом", ingredients: [
+      { name: "Хлеб", qty: 2, unit: "ломтик" },
+      { name: "Творожный сыр", qty: 4, unit: "ч. ложки" },
+      { name: "Яйца", qty: 2, unit: "шт." } ]}
+  ]},
+
+  "Десерт": { basePortions: 1, dishes: [
+    { dish: "Батончики", ingredients: [] },
+    { dish: "Конфеты", ingredients: [] },
+    { dish: "Вафли", ingredients: [] }
+  ]},
+
+  "Напитки": { basePortions: 1, dishes: [
+    { dish: "Чай", ingredients: [] },
+    { dish: "Спрайт", ingredients: [] },
+    { dish: "Кола", ingredients: [] },
+    { dish: "Сок", ingredients: [] },
+    { dish: "Морс", ingredients: [] }
+  ]},
+
+  "Праздник живота": { basePortions: 2, dishes: [
+    { dish: "Бургеры", ingredients: [
+      { name: "Булочка", qty: 1, unit: "упаковка" },
+      { name: "Котлеты", qty: 0, unit: "" },
+      { name: "Красный лук", qty: 1, unit: "шт." },
+      { name: "Соус для бургера", qty: 1, unit: "упаковка" },
+      { name: "Помидоры", qty: 1, unit: "шт." },
+      { name: "Соленые огурцы", qty: 1, unit: "упаковка" },
+      { name: "Плавленый сыр", qty: 1, unit: "упаковка" } ]},
+    { dish: "Хот-доги", ingredients: [
+      { name: "Булочка для хот-дога", qty: 1, unit: "упаковка" },
+      { name: "Соус", qty: 1, unit: "упаковка" },
+      { name: "Лук", qty: 1, unit: "шт." },
+      { name: "Соленые огурцы", qty: 1, unit: "упаковка" },
+      { name: "Плавленый сыр", qty: 1, unit: "упаковка" },
+      { name: "Сосиски", qty: 1, unit: "упаковка" } ]},
+    { dish: "Домашняя шаурма", ingredients: [
+      { name: "Лаваш", qty: 2, unit: "упаковки" },
+      { name: "Соус", qty: 1, unit: "упаковка" },
+      { name: "Курица или Свинина", qty: 0, unit: "",
+        alternatives: ["Курица", "Свинина"] },
+      { name: "Огурец", qty: 1, unit: "шт." },
+      { name: "Морковь по-корейски", qty: 1, unit: "упаковка" } ]}
+  ]}
+};
+
+/* ============================================================
+   СЛОВАРЬ СИНОНИМОВ (легко расширять)
+   ============================================================ */
+const SYNONYMS = {
+  "картофель": "картошка",
+  "яйца": "яйцо",
+  "помидоры": "помидор",
+  "огурцы": "огурец"
+};
+
+function canonicalName(name) {
+  const key = name.trim().toLowerCase();
+  return SYNONYMS[key] || key;
+}
+
+function capitalize(str) {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/* ============================================================
+   СОСТОЯНИЕ
+   ============================================================ */
+const state = {
+  selectedDishes: new Map(),
+  altChoice: new Map(),
+  openCats: new Set(Object.keys(MENU)),
+  search: ""
+};
+
+function dishKey(cat, dish) { return cat + "|||" + dish; }
+function altKey(dk, ingIndex) { return dk + "|" + ingIndex; }
+
+/* ============================================================
+   РЕНДЕР МЕНЮ
+   ============================================================ */
+const menuRoot = document.getElementById("menuRoot");
+
+function renderMenu() {
+  menuRoot.innerHTML = "";
+  const q = state.search.trim().toLowerCase();
+
+  for (const cat of Object.keys(MENU)) {
+    const catData = MENU[cat];
+    const dishes = catData.dishes.filter(d =>
+      !q || d.dish.toLowerCase().includes(q)
+    );
+    if (q && dishes.length === 0) continue;
+
+    const catEl = document.createElement("div");
+    catEl.className = "cat";
+    if (state.openCats.has(cat) || (q && dishes.length > 0)) {
+      catEl.classList.add("open");
+    }
+
+    const head = document.createElement("div");
+    head.className = "cat-head";
+    const selectedCount = dishes.filter(d =>
+      state.selectedDishes.has(dishKey(cat, d.dish))
+    ).length;
+
+    head.innerHTML = `
+      <span class="chev">▶</span>
+      <span class="cat-name">${escapeHtml(cat)}</span>
+      <span class="cat-count ${selectedCount ? "has-selected" : ""}">${
+        selectedCount ? "выбрано: " + selectedCount : dishes.length + " блюд"
+      }</span>
+    `;
+    head.addEventListener("click", () => {
+      if (state.openCats.has(cat)) state.openCats.delete(cat);
+      else state.openCats.add(cat);
+      renderMenu();
+    });
+
+    const body = document.createElement("div");
+    body.className = "cat-body";
+
+    for (const d of dishes) {
+      const dk = dishKey(cat, d.dish);
+      const isChecked = state.selectedDishes.has(dk);
+      const row = document.createElement("div");
+      row.className = "dish-row" + (isChecked ? " checked" : "");
+      row.dataset.key = dk;
+
+      const noIng = d.ingredients.length === 0;
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = isChecked;
+      cb.setAttribute("aria-label", d.dish);
+      cb.addEventListener("change", () => {
+        if (cb.checked) {
+          state.selectedDishes.set(dk, { portions: catData.basePortions });
+        } else {
+          state.selectedDishes.delete(dk);
+        }
+        renderMenu();
+        renderResult();
+      });
+
+      const nameEl = document.createElement("div");
+      nameEl.className = "dish-name";
+      nameEl.innerHTML = escapeHtml(d.dish) +
+        (noIng ? '<span class="no-ing">— без ингредиентов</span>' : "");
+      nameEl.addEventListener("click", () => {
+        cb.checked = !cb.checked;
+        cb.dispatchEvent(new Event("change"));
+      });
+
+      const portionWrap = document.createElement("div");
+      portionWrap.className = "portion-wrap";
+
+      const label = document.createElement("label");
+      label.textContent = "порц.";
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.className = "portion-input";
+      input.min = "1";
+      input.step = "1";
+      input.inputMode = "numeric";
+      input.value = isChecked ? state.selectedDishes.get(dk).portions : catData.basePortions;
+      input.addEventListener("input", () => {
+        let val = parseInt(input.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        input.value = val;
+        if (state.selectedDishes.has(dk)) {
+          state.selectedDishes.get(dk).portions = val;
+          renderResult();
+        }
+      });
+
+      portionWrap.appendChild(label);
+      portionWrap.appendChild(input);
+
+      row.appendChild(cb);
+      row.appendChild(nameEl);
+      row.appendChild(portionWrap);
+
+      body.appendChild(row);
+    }
+
+    catEl.appendChild(head);
+    catEl.appendChild(body);
+    menuRoot.appendChild(catEl);
+  }
+}
+
+/* ============================================================
+   РАСЧЁТ
+   ============================================================ */
+function calculate() {
+  const map = new Map();
+  const tasteMap = new Map();
+  const noIngDishes = [];
+  const altRows = [];
+
+  for (const [dk, sel] of state.selectedDishes) {
+    const sepIdx = dk.indexOf("|||");
+    const cat = dk.slice(0, sepIdx);
+    const dishName = dk.slice(sepIdx + 3);
+    const catData = MENU[cat];
+    if (!catData) continue;
+    const dishData = catData.dishes.find(d => d.dish === dishName);
+    if (!dishData) continue;
+
+    const base = catData.basePortions;
+    const k = sel.portions / base;
+
+    if (dishData.ingredients.length === 0) {
+      noIngDishes.push(dishData.dish);
+      continue;
+    }
+
+    dishData.ingredients.forEach((ing, idx) => {
+      if (ing.alternatives && ing.alternatives.length) {
+        const ak = altKey(dk, idx);
+        const chosen = state.altChoice.get(ak) || ing.alternatives[0];
+
+        if (ing.qty === 0) {
+          const canon = canonicalName(chosen);
+          if (!tasteMap.has(canon)) {
+            tasteMap.set(canon, { name: chosen, units: new Set() });
+          }
+          tasteMap.get(canon).units.add(ing.unit);
+        } else {
+          const qty = ing.qty * k;
+          const canon = canonicalName(chosen);
+          const unit = ing.unit;
+          const key = canon + "|" + unit;
+          if (!map.has(key)) map.set(key, { name: chosen, unit, qty: 0 });
+          map.get(key).qty += qty;
+        }
+
+        altRows.push({
+          dishName: dishData.dish, ingIndex: idx, ing,
+          chosen, dk, portions: sel.portions, basePortions: base
+        });
+        return;
+      }
+
+      if (ing.qty === 0) {
+        const canon = canonicalName(ing.name);
+        if (!tasteMap.has(canon)) {
+          tasteMap.set(canon, { name: ing.name, units: new Set() });
+        }
+        tasteMap.get(canon).units.add(ing.unit);
+        return;
+      }
+
+      const qty = ing.qty * k;
+      const canon = canonicalName(ing.name);
+      const unit = ing.unit;
+      const key = canon + "|" + unit;
+      if (!map.has(key)) map.set(key, { name: ing.name, unit, qty: 0 });
+      map.get(key).qty += qty;
+    });
+  }
+
+  return { map, tasteMap, noIngDishes, altRows };
+}
+
+/* ============================================================
+   РЕНДЕР РЕЗУЛЬТАТА
+   ============================================================ */
+const resultList = document.getElementById("resultList");
+const resultEmpty = document.getElementById("resultEmpty");
+const btnCopy = document.getElementById("btnCopy");
+const btnPrint = document.getElementById("btnPrint");
+
+function fmtQty(n) {
+  const rounded = Math.round(n * 100) / 100;
+  return String(rounded);
+}
+
+function renderResult() {
+  resultList.innerHTML = "";
+  const { map, tasteMap, noIngDishes, altRows } = calculate();
+
+  const rows = [];
+
+  for (const item of map.values()) {
+    rows.push({
+      sortName: canonicalName(item.name),
+      displayName: capitalize(item.name),
+      qtyText: fmtQty(item.qty) + (item.unit ? " " + item.unit : ""),
+      isTaste: false
+    });
+  }
+
+  for (const item of tasteMap.values()) {
+    rows.push({
+      sortName: canonicalName(item.name),
+      displayName: capitalize(item.name),
+      qtyText: "по вкусу",
+      isTaste: true
+    });
+  }
+
+  rows.sort((a, b) => a.sortName.localeCompare(b.sortName, "ru"));
+
+  for (const r of rows) {
+    const li = document.createElement("li");
+    li.className = "result-item";
+    li.innerHTML = `
+      <span class="ri-name">${escapeHtml(r.displayName)}</span>
+      <span class="ri-dots"></span>
+      <span class="ri-qty ${r.isTaste ? "taste" : ""}">${escapeHtml(r.qtyText)}</span>
+    `;
+    resultList.appendChild(li);
+  }
+
+  if (altRows.length > 0) {
+    const seen = new Set();
+    for (const ar of altRows) {
+      const groupKey = ar.dk + "|" + ar.ingIndex;
+      if (seen.has(groupKey)) continue;
+      seen.add(groupKey);
+
+      const li = document.createElement("li");
+      li.className = "result-item";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "ri-name";
+      nameSpan.textContent = capitalize(ar.ing.name);
+      nameSpan.title = "Блюдо: " + ar.dishName + " (" + ar.portions + " порц.)";
+
+      const dots = document.createElement("span");
+      dots.className = "ri-dots";
+
+      const altSel = document.createElement("select");
+      altSel.className = "alt-select";
+      altSel.setAttribute("aria-label", "Выбор варианта: " + ar.ing.name);
+      for (const alt of ar.ing.alternatives) {
+        const opt = document.createElement("option");
+        opt.value = alt;
+        opt.textContent = alt;
+        if (alt === ar.chosen) opt.selected = true;
+        altSel.appendChild(opt);
+      }
+      altSel.addEventListener("change", () => {
+        state.altChoice.set(altKey(ar.dk, ar.ingIndex), altSel.value);
+        renderResult();
+      });
+
+      li.appendChild(nameSpan);
+      li.appendChild(dots);
+      li.appendChild(altSel);
+      resultList.appendChild(li);
+    }
+  }
+
+  if (noIngDishes.length > 0) {
+    const note = document.createElement("div");
+    note.className = "no-ing-note";
+    note.textContent = "Без ингредиентов: " + noIngDishes.join(", ");
+    resultList.appendChild(note);
+  }
+
+  const hasAny = rows.length > 0 || altRows.length > 0 || noIngDishes.length > 0;
+  resultEmpty.style.display = hasAny ? "none" : "block";
+
+  btnCopy.disabled = !hasAny;
+  btnPrint.disabled = !hasAny;
+}
+
+/* ============================================================
+   УТИЛИТЫ
+   ============================================================ */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildTextList() {
+  const { map, tasteMap, noIngDishes, altRows } = calculate();
+  const lines = [];
+
+  const rows = [];
+  for (const item of map.values()) {
+    rows.push({
+      sortName: canonicalName(item.name),
+      text: capitalize(item.name) + " — " + fmtQty(item.qty) + (item.unit ? " " + item.unit : "")
+    });
+  }
+  for (const item of tasteMap.values()) {
+    rows.push({
+      sortName: canonicalName(item.name),
+      text: capitalize(item.name) + " — по вкусу"
+    });
+  }
+  rows.sort((a, b) => a.sortName.localeCompare(b.sortName, "ru"));
+  for (const r of rows) lines.push(r.text);
+
+  const seen = new Set();
+  for (const ar of altRows) {
+    const groupKey = ar.dk + "|" + ar.ingIndex;
+    if (seen.has(groupKey)) continue;
+    seen.add(groupKey);
+    let text = capitalize(ar.chosen);
+    if (ar.ing.qty === 0) {
+      text += " — по вкусу";
+    } else {
+      const k = ar.portions / ar.basePortions;
+      text += " — " + fmtQty(ar.ing.qty * k) + (ar.ing.unit ? " " + ar.ing.unit : "");
+    }
+    lines.push(text);
+  }
+
+  if (noIngDishes.length > 0) {
+    lines.push("Без ингредиентов: " + noIngDishes.join(", "));
+  }
+
+  return lines.join("\n");
+}
+
+function copyList() {
+  const text = buildTextList();
+  if (!text) return;
+
+  const done = () => showToast("Список скопирован");
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      done();
+    } catch (e) {
+      showToast("Не удалось скопировать");
+    }
+    document.body.removeChild(ta);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else {
+    fallback();
+  }
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+}
+
+/* ============================================================
+   ОБРАБОТЧИКИ
+   ============================================================ */
+document.getElementById("btnReset").addEventListener("click", () => {
+  state.selectedDishes.clear();
+  state.altChoice.clear();
+  renderMenu();
+  renderResult();
+  showToast("Выбор сброшен");
+});
+
+btnCopy.addEventListener("click", copyList);
+btnPrint.addEventListener("click", () => window.print());
+
+const searchInput = document.getElementById("searchInput");
+searchInput.addEventListener("input", () => {
+  state.search = searchInput.value;
+  renderMenu();
+});
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+renderMenu();
+renderResult();
+</script>
+</body>
+</html>
